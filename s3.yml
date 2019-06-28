@@ -1,0 +1,41 @@
+Description: Teste para Criacao de Bucket.
+
+Resources:
+  S3CreateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+          BucketName: s3-lg
+          AccessControl: PublicRead
+          BucketEncryption:
+            ServerSideEncryptionConfiguration:
+              - ServerSideEncryptionByDefault:
+                  SSEAlgorithm: AES-256                       
+          # LyfeCycleConfiguration:
+          # Rules:
+          #   - Id: AbortIncompleteMultipartUpload
+          #     Status: Enable
+          #     AbortIncompleteMultipartUpload:
+          #       DaysAfterInitiation: 7                      
+          #   - Id: Transitions
+          #     Status: Enable
+          #     Transitions:
+          #     - StorageClass: GLACIER
+          #       TransitionInDays: 90              
+          Tags:
+            -
+             Key: Name
+             Value: public
+          VersioningConfiguration:
+            Status: Enabled
+          WebsiteConfiguration:
+            ErrorDocument: error.html
+            IndexDocument: index.html
+          # ObjectLockConfiguration:
+          #   ObjectLockEnabled: Enabled
+          #   Rule:
+          #     DefaultRetention:
+          #       Days: 180
+          #       Mode: COMPLIANCE
+          #       Years: 0
+
+
