@@ -1,3 +1,107 @@
 Resources:
-  Helloucket:
-    Type: AWS::S3::Bucket
+  Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - SSEAlgorithm: AES256
+      BucketName: S3_LG
+      # CorsConfiguration:
+      #   CorsRule:
+      #     AllowedHeaders:
+      #       - *
+      #     AllowedMethods:
+      #       - GET
+      #     AllowedOrigins:
+      #       - 
+      #     ExposedHeaders:
+      #       - 
+      #     Id:
+      #       - 
+      #     MaxAge:
+      #       -         
+      LyfeCycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteMultipartUpload
+            Status: Enable
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+          - Id: NoncurrentVersionExpirationInDays
+            Status: Enable
+            NoncurrentVersionExpirationInDays: 366
+          - Id: Transitions
+            Status: Enable
+            Transitions:
+              StorageClass: GLACIER
+              # TransitionDate:
+              TransitionInDays: 90
+      # LoggingConfiguration:
+      #   DestinationBucketName:
+      #   LogFilePrefix:
+      # MetricsConfigurations:
+      #   Id:
+      #   Prefix:
+      #   TagFilters:
+      # NotificationConfiguration:
+      #   LambdaConfigurations:
+      #     Event:
+      #       - 
+      #     Filter:
+      #       S3Key:
+      #         Rule:
+      #           Name:
+      #           Value:
+      #     Function:
+      #   QueueConfigurations:
+      #     Event:
+      #     Filter:
+      #     Queue:
+      #   TopicConfigurations:
+      #     Event:
+      #     Filter:
+      #     Topic:
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Days: 180
+            Mode: COMPLIANCE
+            Years: 0
+      # PublicAccessBlockConfiguration:
+      #   BlockPublicAcls: false
+      #   BlockPublicPolice: false
+      #   IgnorePublicAcls: false
+      #   RestrictPublicBuckets: false
+      # ReplicationConfiguration:
+      #   Role:
+      #   Rules:
+      #     Destination:
+      #     Id:
+      #     Prefix:
+      #     SourceSelectionCriteria:
+      #     Status: Disabled
+      Tags:
+        Key: data-application
+        Value: public
+      VersioningConfiguration:
+        Status: Enabled
+      WebsiteConfiguration:
+        ErrorDocument: error.html
+        IndexDocument: index.html
+        # RedirectAllRequestsTo: 
+        #   HostName:
+        #   Protocol: https
+        # RoutingRules:
+        #   RedirectRule:
+        #     Hostname:
+        #     HttpRedirectCode:
+        #     Protocol:
+        #     ReplaceKeyPrefixWith:
+        #     ReplaceKeyWith:
+        #   RoutingRuleCondition:
+        #     HttpErrorCodeReturnedEquals:
+        #     KeyPrefixEquals:
+          
+
+
+

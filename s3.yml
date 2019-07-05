@@ -5,22 +5,22 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
           BucketName: s3-lg
-          AccessControl: PublicRead
+          # AccessControl: PublicRead
           BucketEncryption:
             ServerSideEncryptionConfiguration:
               - ServerSideEncryptionByDefault:
-                  SSEAlgorithm: AES-256                       
-          # LyfeCycleConfiguration:
-          # Rules:
-          #   - Id: AbortIncompleteMultipartUpload
-          #     Status: Enable
-          #     AbortIncompleteMultipartUpload:
-          #       DaysAfterInitiation: 7                      
-          #   - Id: Transitions
-          #     Status: Enable
-          #     Transitions:
-          #     - StorageClass: GLACIER
-          #       TransitionInDays: 90              
+                  SSEAlgorithm: AES256
+          LoggingConfiguration:
+            DestinationBucketName: logs-32
+            LogFilePrefix: s3-lg/                      
+          # LifecycleConfiguration:
+            # AbortIncompleteMultipartUpload:
+            #   DaysAfterInitiation: 7                      
+              # Status: Enabled
+            # ExpirationInDays: 360
+            # StorageClass: GLACIER
+            # TransitionInDays: 90
+            # Status: Enabled
           Tags:
             -
              Key: Name
@@ -37,5 +37,4 @@ Resources:
           #       Days: 180
           #       Mode: COMPLIANCE
           #       Years: 0
-
 
