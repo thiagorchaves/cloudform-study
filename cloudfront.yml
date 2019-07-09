@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Type: AWS::CloudFront::Distribution
+Properties: 
+  DistributionConfig: 
+     Aliases: 
+      - String
+     CacheBehaviors: 
+       AllowedMethods: 
+        - GET, HEAD
+       CachedMethods: 
+        - GET, HEAD
+       Compress: Boolean
+       DefaultTTL: 86400
+       FieldLevelEncryptionId: String
+       ForwardedValues: 
+         Cookies: 
+          Forward: all
+          # WhitelistedNames: 
+          #   - String
+        #  Headers: 
+        #   - String
+         QueryString: true
+        #  QueryStringCacheKeys: 
+        #   - String
+      #  LambdaFunctionAssociations: 
+      #     - LambdaFunctionAssociation
+       MaxTTL: 31536000
+       MinTTL: 0
+       PathPattern: String
+       SmoothStreaming: Boolean
+       TargetOriginId: String
+       TrustedSigners: 
+         - String
+       ViewerProtocolPolicy: String
+     Comment: String
+     CustomErrorResponses: 
+      - CustomErrorResponse
+     DefaultCacheBehavior: 
+      AllowedMethods: 
+        - GET, HEAD
+      CachedMethods: 
+        - GET, HEAD
+      Compress: true
+      DefaultTTL: 86400
+      FieldLevelEncryptionId: String
+      ForwardedValues: 
+        ForwardedValues
+      LambdaFunctionAssociations: 
+        - LambdaFunctionAssociation
+      MaxTTL: Double
+      MinTTL: Double
+      PathPattern: String
+      SmoothStreaming: Boolean
+      TargetOriginId: String
+      TrustedSigners: 
+        - String
+      ViewerProtocolPolicy: String
+     DefaultRootObject: String
+     Enabled: Boolean
+     HttpVersion: String
+     IPV6Enabled: Boolean
+     Logging:
+       Bucket: String
+       IncludeCookies: Boolean
+       Prefix: String
+     Origins: 
+      - Origin
+     PriceClass: String
+    #  Restrictions: 
+    #    GeoRestriction: 
+    #     Locations: 
+    #       - String
+    #     RestrictionType: none
+     ViewerCertificate: 
+      AcmCertificateArn: arn:aws:acm:us-east-1:092901710718:certificate/1de5396d-7fff-4d93-99bb-749b2f0666d8
+      # CloudFrontDefaultCertificate: Boolean
+      # IamCertificateId: String
+      MinimumProtocolVersion: TLSv1.1_2016
+      SslSupportMethod: sni_only
+     WebACLId: String
+  Tags: 
+    - Key: Name
+    - Value: eiplus-www-beta
