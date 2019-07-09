@@ -1,0 +1,43 @@
+Resources:
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: LG
+      ServiceRole: arn:aws:iam::240639734538:role/service-role/code-build-eiplus-qa-service-role
+      Artifacts:
+        ArtifactIdentifier: LG
+        EncryptionDisabled: true
+        Location: s3_lg
+        Name: /
+        NamespaceType: NONE
+        OverrideArtifactName: false
+        Packaging: ZIP
+        Type: S3
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: registry/repository:latest
+      Source:
+        Auth:
+          Type: OAUTH
+        Type: BITBUCKET
+        Location: https://thiagochaves@bitbucket.org/eiplus/eiplus-lg.git
+      TimeoutInMinutes: 5
+      Triggers:
+        Webhook: true
+        FilterGroups:
+          Type: EVENT
+          Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            # - Type: BASE_REF
+            #   Pattern: ^refs/heads/master$
+            #   ExcludeMatchedPattern: false
+            # - Type: ACTOR_ACCOUNT_ID
+            #   Pattern: 12345
+            #   ExcludeMatchedPattern: true
+          # - Type: EVENT
+          #   Pattern: PUSH
+          # - Type: HEAD_REF
+          #   Pattern: ^refs/heads/.*
+            # - Type: FILE_PATH
+            #   Pattern: READ_ME
+            #   ExcludeMatchedPattern: true

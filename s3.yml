@@ -1,35 +1,40 @@
+---
 Description: Teste para Criacao de Bucket.
 
 Resources:
   S3CreateBucket:
     Type: AWS::S3::Bucket
     Properties:
-          BucketName: s3-lg
-          # AccessControl: PublicRead
-          BucketEncryption:
-            ServerSideEncryptionConfiguration:
-              - ServerSideEncryptionByDefault:
-                  SSEAlgorithm: AES256
-          LoggingConfiguration:
-            DestinationBucketName: logs-32
-            LogFilePrefix: s3-lg/                      
-          # LifecycleConfiguration:
-            # AbortIncompleteMultipartUpload:
-            #   DaysAfterInitiation: 7                      
-              # Status: Enabled
-            # ExpirationInDays: 360
-            # StorageClass: GLACIER
-            # TransitionInDays: 90
-            # Status: Enabled
-          Tags:
-            -
-             Key: Name
-             Value: public
-          VersioningConfiguration:
-            Status: Enabled
-          WebsiteConfiguration:
-            ErrorDocument: error.html
-            IndexDocument: index.html
+      BucketName: s3-lg
+      # AccessControl: PublicRead
+      BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+      LoggingConfiguration:
+          DestinationBucketName: logs-32
+          LogFilePrefix: s3-lg/                    
+      LifecycleConfiguration:
+        Rules:
+          - Id: Multipartupload
+            Status: 'Enabled'
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7 
+            ExpirationInDays: 180                     
+          -  Id: Glacier
+             Status: 'Enabled'
+             Transition:                  
+                  StorageClass: GLACIER
+                  TransitionInDays: 90            
+      Tags:
+        -
+         Key: Name
+         Value: public
+      VersioningConfiguration:
+          Status: Enabled
+      WebsiteConfiguration:
+          ErrorDocument: error.html
+          IndexDocument: index.html
           # ObjectLockConfiguration:
           #   ObjectLockEnabled: Enabled
           #   Rule:
