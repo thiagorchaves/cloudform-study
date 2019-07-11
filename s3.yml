@@ -1,5 +1,12 @@
 ---
-Description: Teste para Criacao de Bucket.
+Description: S3 Bucket.
+Parameters:
+  DestinationBucketName:
+    Type: String
+    Default: ""
+  LogPrefix:
+    Type: String
+    Default: ""
 
 Resources:
   S3CreateBucket:
@@ -12,9 +19,8 @@ Resources:
             - ServerSideEncryptionByDefault:
                 SSEAlgorithm: AES256
       LoggingConfiguration:
-          DestinationBucketName: s3-log-delivery
-          LogFilePrefix: 
-            - !Ref BucketName/                    
+          DestinationBucketName: !Ref DestinationBucketName
+          LogFilePrefix: !Ref LogPrefix
       LifecycleConfiguration:
         Rules:
           - Id: Multipartupload
