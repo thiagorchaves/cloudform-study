@@ -3,31 +3,38 @@ Resources:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: LG
-      ServiceRole: arn:aws:iam::240639734538:role/service-role/code-build-eiplus-qa-service-role
+      ServiceRole: 'arn:aws:iam::685261433917:role/service-role/code-build'
       Artifacts:
         ArtifactIdentifier: LG
         EncryptionDisabled: true
-        Location: s3_lg
+        Location: s3-lg
         Name: /
         NamespaceType: NONE
         OverrideArtifactName: false
-        Packaging: ZIP
+        Packaging: NONE
         Type: S3
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: registry/repository:latest
+        Image: aws/codebuild/standard:1.0
+        ImagePullCredentialsType: CODEBUILD
       Source:
+        BuildSpec: |
+          version: 0.2
+          phases:
+            post_build:
+              commands:
+                - aws s3 sync . s3://s3-lg --exclude '.gitignore' --exclude '.git/*'
         Auth:
           Type: OAUTH
-        Type: BITBUCKET
-        Location: https://thiagochaves@bitbucket.org/eiplus/eiplus-lg.git
+        Type: CODECOMMIT
+        Location: https://git-codecommit.us-east-1.amazonaws.com/v1/repos/eiplus-lg
       TimeoutInMinutes: 5
-      Triggers:
-        Webhook: true
-        FilterGroups:
-          Type: EVENT
-          Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+      # Triggers:
+        # FilterGroups:
+        #   - Type: EVENT
+        #     Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+        # Webhook: true
             # - Type: BASE_REF
             #   Pattern: ^refs/heads/master$
             #   ExcludeMatchedPattern: false

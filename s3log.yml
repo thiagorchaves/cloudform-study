@@ -1,20 +1,24 @@
 ---
-Description: Teste para Criacao de Bucket.
+Description: Log Bucket.
 
 Resources:
   S3CreateBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref AWS::StackName
-      # AccessControl: PublicRead
+      AccessControl: LogDeliveryWrite
       BucketEncryption:
           ServerSideEncryptionConfiguration:
             - ServerSideEncryptionByDefault:
                 SSEAlgorithm: AES256
-      LoggingConfiguration:
-          DestinationBucketName: s3-log-delivery
-          LogFilePrefix: 
-            - !Ref BucketName/                    
+      # LoggingConfiguration:
+      #     DestinationBucketName: logs-32
+      #     LogFilePrefix: !Ref AWS::StackName/
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true                    
       LifecycleConfiguration:
         Rules:
           - Id: Multipartupload
@@ -29,7 +33,7 @@ Resources:
                   TransitionInDays: 90            
       Tags:
         -
-         Key: data-application
+         Key: environment
          Value: prod
       VersioningConfiguration:
           Status: Enabled
