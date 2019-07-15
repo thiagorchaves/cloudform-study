@@ -3,7 +3,7 @@ Resources:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: LG
-      ServiceRole: 'arn:aws:iam::685261433917:role/service-role/code-build'
+      ServiceRole: 'arn:aws:iam::240639734538:role/code-build'
       Artifacts:
         ArtifactIdentifier: LG
         EncryptionDisabled: true
@@ -19,28 +19,32 @@ Resources:
         Image: aws/codebuild/standard:1.0
         ImagePullCredentialsType: CODEBUILD
       Source:
-        BuildSpec: |
-          version: 0.2
-          phases:
-            post_build:
-              commands:
-                - aws s3 sync . s3://s3-lg --exclude '.gitignore' --exclude '.git/*'
+      #   BuildSpec: |
+      #     version: 0.2
+      #     phases:
+      #       post_build:
+      #         commands:
+      #           - aws s3 sync . s3://s3-lg --exclude '.gitignore' --exclude '.git/*'
         Auth:
           Type: OAUTH
-        Type: CODECOMMIT
-        Location: https://git-codecommit.us-east-1.amazonaws.com/v1/repos/eiplus-lg
+        Type: BITBUCKET
+        Location: https://thiagochaves@bitbucket.org/eiplus/eiplus-lg.git
       TimeoutInMinutes: 5
-      # Triggers:
-        # FilterGroups:
-        #   - Type: EVENT
-        #     Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
-        # Webhook: true
-            # - Type: BASE_REF
-            #   Pattern: ^refs/heads/master$
-            #   ExcludeMatchedPattern: false
-            # - Type: ACTOR_ACCOUNT_ID
-            #   Pattern: 12345
-            #   ExcludeMatchedPattern: true
+      Triggers:
+        Webhook: true
+        FilterGroups:
+          - - Type: BASE_REF
+              Pattern: ^refs/heads/master$
+          - - Type: EVENT
+              Pattern: PUSH, PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED
+          
+        
+          # - Type: BASE_REF
+          #   Pattern: ^refs/heads/master$
+          #   ExcludeMatchedPattern: false
+          # - Type: ACTOR_ACCOUNT_ID
+          #   Pattern: 12345
+          #   ExcludeMatchedPattern: true
           # - Type: EVENT
           #   Pattern: PUSH
           # - Type: HEAD_REF

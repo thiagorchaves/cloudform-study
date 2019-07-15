@@ -1,0 +1,89 @@
+Description: Aws CodePipeline
+Parameters:
+  BucketLocation:
+    Type: String
+    Default: ""
+  Name:
+    Type: String
+    Default: ""
+  Role:
+    Type: String
+    Default: ""
+  StagesName:
+    Type: String
+    Default: ""
+  WebHookName:
+    Type: String
+    Default: ""
+  RepositoryBranch:
+    Type: String
+    Default: ""
+  RepositoryBranch:
+    Type: String
+    Default: ""
+  DeploymentGroupName:
+    Type: String
+    Default: ""
+  ApplicationName:
+    Type: String
+    Default: ""
+
+Resources:
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Location: !Ref BucketLocation
+        Type: S3
+      Name: !Ref Name
+      RestartExecutionOnUpdate: true
+      RoleArn: !Ref Role
+      DisableInboundStageTransitions:
+        Reason: String
+        StageName: String
+      Stages:
+        - 
+          Name: !Ref StagesName
+          Actions:
+          - 
+            InputArtifacts:
+              ActionTypeId:
+                  Category: Source
+                  Owner: AWS
+                  Version: 1
+                  Provider: CodeCommit
+            Configuration:
+              BranchName:
+                !Ref RepositoryBranch
+              
+              RepositoryName:
+                !Ref RepositoryName
+            
+            # OutputArtifacts:
+            #   -
+            #     Name: !Ref OutputArtifacts           
+              
+            RunOrder: 1
+
+          Name: Build
+          Actions: 
+            - 
+              Name: BuildAction
+              InputArtifacts: 
+                -
+                  Name: SourceOutput 
+              ActionTypeId: 
+                Category: Build 
+                Owner: AWS 
+                Version: 1 
+                Provider: CodeBuild
+              Configuration: 
+                ApplicationName: 
+                  !Ref ApplicationName 
+                DeploymentGroupName: 
+                  !Ref DeploymentGroupName 
+              RunOrder: 1   
+
+          # Blockers:
+          
+      

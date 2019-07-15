@@ -57,9 +57,31 @@ Resources:
     RestartExecutionOnUpdate: true
     RoleArn: !Ref Role
     DisableInboundStageTransitions:
+      Reason: String
+      StageName: String
     Stages:
       - 
-        Action:
-        Blockers:
         Name: !Ref StagesName
+        Actions:
+        - 
+          InputArtifacts:
+            ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1
+                Provider: CodeCommit
+          Configuration:
+            BranchName:
+              !Ref RepositoryBranch
+             
+            RepositoryName:
+              !Ref RepositoryName
+          
+          OutputArtifacts:
+            -
+              Name: !Ref OutputArtifacts           
+             
+          RunOrder: 1
+        Blockers:
+        
     
