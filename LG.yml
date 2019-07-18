@@ -1,13 +1,28 @@
+Description: Aws CodePipeline
+Parameters:
+  # ServiceRole:
+  #   Type: String
+  #   Default: ""
+  BucketLocation:
+    Type: String
+    Default: ""
+  ArtifactIdentifier:
+    Type: String
+    Default: ""
+  RepositoryLocation:
+    Type: String
+    Default: ""
+
 Resources:
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: LG
-      ServiceRole: 'arn:aws:iam::240639734538:role/code-build'
+      ServiceRole: arn:aws:iam::240639734538:role/service-role/codebuild-LG-service-role
       Artifacts:
-        ArtifactIdentifier: LG
+        ArtifactIdentifier: !Ref ArtifactIdentifier
         EncryptionDisabled: true
-        Location: s3-lg
+        Location: !Ref BucketLocation
         Name: /
         NamespaceType: NONE
         OverrideArtifactName: false
@@ -19,36 +34,25 @@ Resources:
         Image: aws/codebuild/standard:1.0
         ImagePullCredentialsType: CODEBUILD
       Source:
-      #   BuildSpec: |
-      #     version: 0.2
-      #     phases:
-      #       post_build:
-      #         commands:
-      #           - aws s3 sync . s3://s3-lg --exclude '.gitignore' --exclude '.git/*'
+        BuildSpec: |
+          version: 0.2
+          phases:
+            post_build:
+              commands:
+                - aws s3 sync . s3://s3-lg --exclude '.gitignore' --exclude '.git/*'
         Auth:
           Type: OAUTH
-        Type: BITBUCKET
-        Location: https://thiagochaves@bitbucket.org/eiplus/eiplus-lg.git
+        Type: CODECOMMIT
+        Location: !Ref RepositoryLocation
       TimeoutInMinutes: 5
-      Triggers:
-        Webhook: true
-        FilterGroups:
-          - - Type: BASE_REF
-              Pattern: ^refs/heads/master$
-          - - Type: EVENT
-              Pattern: PUSH, PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED
+      # Triggers:
+      #   # Webhook: true
+      #   FilterGroups:               
+      #     - - Type: HEAD_REF
+      #         Pattern: master
+      #       - Type: EVENT
+      #         Pattern: PUSH
+              
+              
           
         
-          # - Type: BASE_REF
-          #   Pattern: ^refs/heads/master$
-          #   ExcludeMatchedPattern: false
-          # - Type: ACTOR_ACCOUNT_ID
-          #   Pattern: 12345
-          #   ExcludeMatchedPattern: true
-          # - Type: EVENT
-          #   Pattern: PUSH
-          # - Type: HEAD_REF
-          #   Pattern: ^refs/heads/.*
-            # - Type: FILE_PATH
-            #   Pattern: READ_ME
-            #   ExcludeMatchedPattern: true
