@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  CertificateManagerArn:
+    Type: String
+
+  StackS3Log:
+    Type: String
+
+  DomainName:
+    Type: String
+
+  RootDomainName:
+    Type: String
+
+  DefaultRootObject:
+    Type: String
+    Default: ""
+
+  PriceClass:
+    Type: String
+    Default: PriceClass_All
+    AllowedValues: [PriceClass_100, PriceClass_200, PriceClass_All]
+
+  MinimumProtocolVersion:
+    Type: String
+    Default: TLSv1.1_2016
+    AllowedValues: [TLSv1.2_2018, TLSv1.1_2016, TLSv1_2016, TLSv1.0, SSLv3]
+
+Conditions:
+  HasDefaultRootObject: !Not [!Equals [!Ref DefaultRootObject, ""]]
+
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref DomainName
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteMultipartUpload
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+          - Id: NoncurrentVersionExpirationInDays
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      LoggingConfiguration:
+        DestinationBucketName: !ImportValue !Sub "${StackS3Log}-BucketName"
+        LogFilePrefix: !Sub "${DomainName}/${AWS::StackName}/s3/"
+      VersioningConfiguration:
+        Status: Enabled
+
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "access-identity-${S3Bucket.DomainName}"
+
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Statement:
+          - Action: s3:GetObject
+            Effect: Allow
+            Resource: !Sub "arn:aws:s3:::${S3Bucket}/*"
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}"
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainName
+        DefaultCacheBehavior:
+          Compress: true
+          ForwardedValues:
+            QueryString: true
+          TargetOriginId: !Sub "S3-${S3Bucket}"
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: !If [HasDefaultRootObject, !Ref DefaultRootObject, !Ref "AWS::NoValue"]
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Logging:
+          Bucket: !ImportValue !Sub "${StackS3Log}-BucketDomainName"
+          IncludeCookies: false
+          Prefix: !Sub "${DomainName}/${AWS::StackName}/cloudfront/"
+        Origins:
+          - DomainName: !GetAtt S3Bucket.DomainName
+            Id: !Sub "S3-${S3Bucket}"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}"
+        PriceClass: !Ref PriceClass
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateManagerArn
+          MinimumProtocolVersion: !Ref MinimumProtocolVersion
+          SslSupportMethod: sni-only
+
+  RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+      HostedZoneName: !Sub "${DomainName}."
+      Name: !Ref DomainName
+      Type: A
+
+Outputs:
+  StackName:
+    Value: !Ref AWS::StackName
+
+  CloudFrontDistributionId:
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub ${AWS::StackName}-CloudFrontDistributionId
+
+  CloudFrontDistributionDomainName:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub ${AWS::StackName}-CloudFrontDistributionDomainName
+
+  S3BucketName:
+    Value: !Ref S3Bucket
+    Export:
+      Name: !Sub ${AWS::StackName}-S3BucketName
+
+  S3BucketDomainName:
+    Value: !GetAtt S3Bucket.DomainName
+    Export:
+      Name: !Sub ${AWS::StackName}-S3BucketDomainName
