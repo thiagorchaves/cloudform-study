@@ -1,0 +1,26 @@
+---
+Description: Criacao do Listener
+Resources:
+  # Criacao do Listener
+  ListenerApplicationloadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      # Certificates:
+      #   - 
+      DefaultActions:
+        - Type: forward
+          Order: 1
+          TargetGroupArn: !ImportValue target-name
+      # DefaultActions:
+      #   - Type: redirect
+      #     RedirectConfig:
+      #       Protocol: "HTTPS"
+      #       Host: "#{host}"
+      #       Port: "443"
+      #       Path: "/#{path}"
+      #       Query: "#{query}"
+      #       StatusCode: HTTP_301
+      LoadBalancerArn: !ImportValue alb-name        
+      Port: 80
+      Protocol: HTTP
+      # SslPolicy:

@@ -1,0 +1,57 @@
+---
+Description: Log Bucket.
+
+Resources:
+  S3CreateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref AWS::StackName
+      AccessControl: LogDeliveryWrite
+      BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+      # LoggingConfiguration:
+      #     DestinationBucketName: logs-32
+      #     LogFilePrefix: !Ref AWS::StackName/
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true                    
+      LifecycleConfiguration:
+        Rules:
+          - Id: Multipartupload
+            Status: 'Enabled'
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7 
+            ExpirationInDays: 180                     
+          -  Id: Glacier
+             Status: 'Enabled'
+             Transition:                  
+                  StorageClass: GLACIER
+                  TransitionInDays: 90            
+      Tags:
+        -
+         Key: environment
+         Value: prod
+      VersioningConfiguration:
+          Status: Enabled
+      # WebsiteConfiguration:
+      #     ErrorDocument: error.html
+      #     IndexDocument: index.html
+          # ObjectLockConfiguration:
+          #   ObjectLockEnabled: Enabled
+          #   Rule:
+          #     DefaultRetention:
+          #       Days: 180
+          #       Mode: COMPLIANCE
+          #       Years: 0
+# Outputs:
+#   S3Bucketname:
+#     Description: S3 bucket name
+#     Value: !Ref S3CreateBucket
+#     Export: 
+#       Value: !Sub ${AWS::StackName}-bucket
+
+

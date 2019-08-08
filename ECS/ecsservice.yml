@@ -1,0 +1,30 @@
+---
+Description: Criacao do Ecs Service
+Resources:
+  CreateEcsService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ClusterName
+      DeploymentConfiguration:
+       MaximumPercent: 200
+       MinimumHealthyPercent: 50
+      DesiredCount: 3
+      EnableECSManagedTags: true
+      HealthCheckGracePeriodSeconds: 60
+      LaunchType: EC2
+      LoadBalancers:
+        - 
+      NetworkConfiguration:
+        NetworkConfiguration
+      PlacementConstrains:
+        -
+      PlacementStrategies:
+        - 
+      # PlataformVersion:
+      PropagateTags: SERVICE
+      Role:
+      SchedulingStrategy: REPLICA
+      ServiceName:
+      ServiceRegistries:
+        - ServiceRegistry
+      TaskDefinition:

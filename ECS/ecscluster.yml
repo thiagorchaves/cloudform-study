@@ -1,0 +1,20 @@
+---
+Parameters:
+  ClusterName:
+    Type: String
+    Default: ""
+
+Description: Criacao do Cluster ECS
+
+Resources:
+  CreateEcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref AWS::StackName
+Outputs:
+  ECSCluster:
+    Description: ECS Cluster
+    Value: !Ref CreateEcsCluster
+    Export:
+      Name: !Sub ${AWS::StackName}-cluster
+    

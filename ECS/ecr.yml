@@ -1,0 +1,35 @@
+---
+Description: Criacao do Repositorio ECR
+Resources:
+  CreateECR:
+    Type: AWS::ECR::Repository
+    Properties:
+      #  LifecyclePolicy:
+      #     LifecyclePolicyText:
+      #     RegistryId: Fn::GetAtt AWS::AccountId
+       RepositoryName: !Ref AWS::StackName
+       RepositoryPolicyText:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: AllowPushPull
+            Effect: Allow
+            Principal:
+              AWS:
+                - "arn:aws:iam::240639734538:role/ECS-task-test"
+            Action: 
+            - "ecr:GetDownloadUrlForLayer"
+            - "ecr:BatchGetImage"
+            - "ecr:BatchCheckLayerAvailability"
+            - "ecr:PutImage"
+            - "ecr:InitiateLayerUpload"
+            - "ecr:UploadLayerPart"
+            - "ecr:CompleteLayerUpload"
+            - "ecr:BatchDeleteImage"
+            - "ecr:DescribeRepositories"
+            - "ecr:ListImages"
+            - "ecr:BatchGetImage"
+            - "ecr:GetAuthorizationToken"
+            - "ecr:DescribeImages"
+            
+

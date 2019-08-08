@@ -1,0 +1,41 @@
+---
+# Parameters:
+#   TgName:
+#     Type: String
+#     Default: ""
+
+Description: Target Group for Application LoadBalancer
+Resources:
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 5
+      HealthCheckPath: /health
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 2
+      HealthyThresholdCount: 2
+      Matcher: 
+        HttpCode: 200
+      Name: !Ref AWS::StackName
+      Port: 80
+      Protocol: HTTP
+      Tags: 
+        - Key: Name
+          Value: !Ref AWS::StackName
+      TargetGroupAttributes: 
+        - Key: deregistration_delay.timeout_seconds
+          Value: 20
+      TargetType: instance
+      Targets: 
+        - Id: !ImportValue ec2-id
+          Port: 80
+      UnhealthyThresholdCount: 5
+      VpcId: !ImportValue eiplus-VPCID
+Outputs:
+  TargetGroup:
+    Description: Arn do target Group
+    Value: !Ref TargetGroup
+    Export:
+      Name: 'target-name'

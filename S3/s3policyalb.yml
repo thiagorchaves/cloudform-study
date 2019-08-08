@@ -1,0 +1,20 @@
+---
+Description: Politica s3
+Resources:
+  CreateS3Policy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: alb-ecs-eiplus-logs 
+      PolicyDocument: 
+        Version: "2008-10-17"
+        Id: PolicyForCloudFrontPrivateContent
+        Statement:
+          -
+
+            Sid: AllowCloudFront
+            Effect: Allow
+            Principal:
+              AWS: 
+              - "arn:aws:iam::127311923021:root"
+            Action: s3:PutObject
+            Resource: arn:aws:s3:::alb-ecs-eiplus-logs/alb_/*

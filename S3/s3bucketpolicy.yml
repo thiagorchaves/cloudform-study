@@ -1,0 +1,20 @@
+---
+Description: Politica s3
+Resources:
+  CreateS3Policy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: s3-lg 
+      PolicyDocument: 
+        Version: "2008-10-17"
+        Id: PolicyForCloudFrontPrivateContent
+        Statement:
+          -
+
+            Sid: AllowCloudFront
+            Effect: Allow
+            Principal:
+              AWS: 
+              - "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity E90YPXXGB07HA"
+            Action: s3:GetObject
+            Resource: arn:aws:s3:::s3-lg/*

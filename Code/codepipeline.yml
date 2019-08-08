@@ -1,0 +1,88 @@
+Description: Aws CodePipeline
+Parameters:
+  # BucketLocation:
+  #   Type: String
+  #   Default: ""
+  # Name:
+  #   Type: String
+  #   Default: ""
+  # Role:
+  #   Type: String
+  #   Default: ""
+  # StagesName:
+  #   Type: String
+  #   Default: ""
+  RepositoryBranch:
+    Type: String
+    Default: ""
+  RepositoryName:
+    Type: String
+    Default: ""
+  # DeploymentGroupName:
+  #   Type: String
+  #   Default: ""
+  # ProjectName:
+  #   Type: String
+  #   Default: ""
+
+Resources:
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Location: s3-lg-pipeline
+        Type: S3
+      Name: LG
+      RestartExecutionOnUpdate: true
+      RoleArn: arn:aws:iam::240639734538:role/service-role/AWSCodePipelineServiceRole-us-east-2-LG-staging
+      DisableInboundStageTransitions:
+        - Reason: Approve Step
+          StageName: Build
+      Stages:
+        - Name: Source
+          Actions:
+            - ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1
+                Provider: CodeCommit
+              Name: CodeCommit
+              OutputArtifacts:
+                - Name: SourceArtifact
+              Configuration:
+                BranchName: !Ref RepositoryBranch
+                RepositoryName: !Ref RepositoryName
+              RunOrder: 1
+         
+        - Name: Build
+          Actions: 
+            - Name: BuildAction
+              InputArtifacts:               
+              - Name: SourceArtifact 
+              ActionTypeId: 
+                Category: Build 
+                Owner: AWS 
+                Version: 1 
+                Provider: CodeBuild
+              Name: CodeBuild
+              OutputArtifacts:
+                - Name: DeploymentArtifacts
+              Configuration: 
+                ProjectName: LG
+              RunOrder: 1                
+        - Name: Approval
+          Actions:
+          - Name: Approval
+            Name: Approval
+            ActionTypeId:
+              Category: Approval
+              Owner: AWS
+              Version: 1
+              Provider: Manual
+            RunOrder: 1
+                  
+
+
+         
+          
+      

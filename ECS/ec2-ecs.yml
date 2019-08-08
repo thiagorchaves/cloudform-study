@@ -1,0 +1,149 @@
+---
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - m5.xlarge
+      - c5.2xlarge
+      - t3.small
+      - t3a.small  
+  AvailabilityZone:
+    Type: String
+    Default: us-east-2a
+    AllowedValues:
+      - us-east-2a
+      - us-east-2b     
+  ImageId:
+    Type: String
+    Default: ami-0dca97e7cde7be3d5
+  IamInstanceProfile:
+    Type: String
+    Default: ECSInstanceRole
+  KeyName:
+    Type: String
+    Default: qadev-ohio
+  SubnetId:
+    Type: String
+    Default: "subnet-0828d024f618a4f32"
+    AllowedValues:
+      - subnet-0828d024f618a4f32
+      - subnet-09280e209e5a23d94
+      - subnet-0b9aa8a080b7a4a63
+      - subnet-08122ff2b78e4b23a
+  SGId:
+    Type: String
+    Default: "sg-055cb65a74a7fee3c"   
+  ParentECSStack:
+    Type: String
+  # Logs:
+  #   Type: String
+  #   Default: ""
+  SbId:
+    Type: String
+    Default: "subnet-0828d024f618a4f32"
+    AllowedValues:
+    - subnet-0828d024f618a4f32
+    - subnet-09280e209e5a23d94
+    - subnet-0b9aa8a080b7a4a63
+    - subnet-08122ff2b78e4b23a
+  SbId2:
+    Type: String
+    Default: "subnet-09280e209e5a23d94"
+    AllowedValues:
+    - subnet-0828d024f618a4f32
+    - subnet-09280e209e5a23d94
+    - subnet-0b9aa8a080b7a4a63
+    - subnet-08122ff2b78e4b23a
+  AlbName:
+    Type: String
+    Default: ""    
+
+Description: Criacao da EC2 para o Cluster ECS
+
+Resources:
+# Criação da EC2
+  CreateEc2ClusterInstance:
+    Type: AWS::EC2::Instance
+    Properties: 
+      AvailabilityZone: !Ref AvailabilityZone      
+      DisableApiTermination: false
+      IamInstanceProfile: !Ref IamInstanceProfile
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType      
+      KeyName: !Ref KeyName      
+      Monitoring: true
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: 0
+          SubnetId: !Ref SubnetId
+          GroupSet:
+          - !Ref SGId
+      # PlacementGroupName: 
+      #   Fn::ImportValue: !Sub ${ParentECSStack}-cluster
+      # PrivateIpAddress: String      
+      # SecurityGroupIds: 
+      #   - !Ref SGId            
+      # SubnetId: !Ref SubnetId
+      # SsmAssociations:
+      #   - AssociationsParameters:
+      Tags: 
+        - Key: Name
+          Value: eiplus-ecs-cluster
+      Tenancy: default
+      UserData: 
+         Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            echo ECS_CLUSTER=${ParentECSStack} >> /etc/ecs/ecs.config
+      # Volumes: 
+      #   - EC2 MountPoint
+# Outputs:
+#   EC2InstanceTag:
+#     Description: Tags da instancia
+#     Value: !Ref Tags
+#   Ec2InstanceNetwork:
+#     Description: Ip Público
+#     Value: !Ref AssociatePublicIpAddress
+  
+  # Criacao do Application LoadBalancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      # LoadBalancerAttributes:
+      #   - Key: access_logs.s3.enabled
+      #     Value: true
+      #   - Key: access_logs.s3.bucket
+      #     Value: alb-ecs-eiplus-logs
+      #   - Key: access_logs.s3.prefix
+      #     Value: !Ref Logs
+      Name: !Ref AWS::StackName
+      Scheme: internet-facing
+      SecurityGroups: 
+        - !Ref SGId
+      # SubnetMappings:
+      #   - 
+      Subnets:
+        - !Ref SbId
+        - !Ref SbId2
+
+      Tags:
+        - Key: Name
+          Value: !Ref AlbName
+      Type: application
+Outputs:
+  Alb:
+    Description: Arn do LoadBalancer
+    Value: !Ref ApplicationLoadBalancer
+    Export:
+      Name: 'alb-name'
+  Ec2:
+    Description: Id da Ec2
+    Value: !Ref CreateEc2ClusterInstance
+    Export:
+      Name: 'ec2-id'
+
+

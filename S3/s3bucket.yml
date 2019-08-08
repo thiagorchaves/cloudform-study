@@ -1,0 +1,52 @@
+---
+Description: S3 Bucket.
+Parameters:
+  DestinationBucketName:
+    Type: String
+    Default: ""
+  LogPrefix:
+    Type: String
+    Default: ""
+
+Resources:
+  S3CreateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref AWS::StackName
+      # AccessControl: PublicRead
+      BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+      LoggingConfiguration:
+          DestinationBucketName: !Ref DestinationBucketName
+          LogFilePrefix: !Ref LogPrefix
+      LifecycleConfiguration:
+        Rules:
+          - Id: Multipartupload
+            Status: 'Enabled'
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7 
+            ExpirationInDays: 180                     
+          -  Id: Glacier
+             Status: 'Enabled'
+             Transition:                  
+                  StorageClass: GLACIER
+                  TransitionInDays: 90            
+      Tags:
+        -
+         Key: data-application
+         Value: prod
+      VersioningConfiguration:
+          Status: Enabled
+      # WebsiteConfiguration:
+      #     ErrorDocument: error.html
+      #     IndexDocument: index.html
+          # ObjectLockConfiguration:
+          #   ObjectLockEnabled: Enabled
+          #   Rule:
+          #     DefaultRetention:
+          #       Days: 180
+          #       Mode: COMPLIANCE
+          #       Years: 0
+
