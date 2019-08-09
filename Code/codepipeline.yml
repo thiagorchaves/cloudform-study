@@ -63,8 +63,7 @@ Resources:
                 Category: Build 
                 Owner: AWS 
                 Version: 1 
-                Provider: CodeBuild
-              Name: CodeBuild
+                Provider: CodeBuild              
               OutputArtifacts:
                 - Name: DeploymentArtifacts
               Configuration: 
@@ -73,14 +72,18 @@ Resources:
         - Name: Approval
           Actions:
           - Name: Approval
-            Name: Approval
             ActionTypeId:
               Category: Approval
               Owner: AWS
               Version: 1
               Provider: Manual
             RunOrder: 1
-                  
+Outputs:
+  Pipe:
+    Description: Code Pipeline 
+    Value: !Ref CodePipeline
+    Export: 
+      Name: 'code-pipeline' 
 
 
          
