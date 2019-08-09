@@ -1,0 +1,136 @@
+---
+Description: Criacao de uma VPC
+Resources:
+  VPCXomp:
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: 10.1.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref "AWS::StackName", "VPC" ]]
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    DependsOn: VPCXomp
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPCXomp
+      InternetGatewayId: !Ref InternetGateway
+  PubSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      VpcId: !Ref VPCXomp
+      CidrBlock: 10.1.10.0/24
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-Public-A
+  PubSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 1, !GetAZs ]
+      VpcId: !Ref VPCXomp
+      CidrBlock: 10.1.20.0/24
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-Public-B
+  PvtSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      VpcId: !Ref VPCXomp
+      CidrBlock: 10.1.50.0/24
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-Private-A
+  PvtSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 1, !GetAZs ]
+      VpcId: !Ref VPCXomp
+      CidrBlock: 10.1.60.0/24
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-Private-B 
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCXomp
+      Tags:
+        - Key: Name
+          Value: Public
+  PublicRoute1:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCXomp
+      Tags:
+        - Key: Name
+          Value: Private
+  PrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PubSubnetA
+      RouteTableId: !Ref PublicRouteTable
+  PublicSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PubSubnetB
+      RouteTableId: !Ref PublicRouteTable
+  PrivateSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PvtSubnetA
+      RouteTableId: !Ref PrivateRouteTable
+  PrivateSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PvtSubnetB
+      RouteTableId: !Ref PrivateRouteTable
+  
+
+  
+Outputs:
+  pubsubA:
+    Description: Public subnet A from VPC
+    Value: !Ref PubSubnetA
+    Export: 
+      Name: !Sub '${AWS::StackName}-Pub-SubnetA'
+
+  pubsubB:
+    Description: Public subnet B from VPC
+    Value: !Ref PubSubnetB
+    Export: 
+      Name: !Sub '${AWS::StackName}-Pub-SubnetB'
+
+  pvtsubA:
+    Description: Private subnet A from VPC
+    Value: !Ref PvtSubnetA
+    Export: 
+      Name: !Sub '${AWS::StackName}-Pvt-SubnetA'
+
+  pvtsubB:
+    Description: Private subnet B from VPC
+    Value: !Ref PvtSubnetB
+    Export: 
+      Name: !Sub '${AWS::StackName}-Pvt-SubnetB'
+
+  VpcId:
+    Description: VPC Name
+    Value: !Ref VPCXomp
+    Export: 
+      Name: !Sub '${AWS::StackName}-VPCID'
