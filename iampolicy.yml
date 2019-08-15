@@ -1,36 +1,36 @@
 ---
 Parameters:
-  PName: 
-    Type: String
-    Default: ""
   GName:
     Type: String
     Default: ""
+    MaxLength: 48
+  
+Conditions:
+  CreateGroup: !Equals [!Ref GName, ""]
 
 Description: Create iam policy and group.
 Resources:
 # Criação do Grupo
   IamGroup:
+    Condition: CreateGroup
     Type: AWS::IAM::Group
     Properties:
-      GroupName: !Ref GName
-      # Policies:
-      # - PolicyName: !Ref PName
-      #   PolicyDocument: 
+      GroupName: EnableMFA
+      
 
 # Criação da Policy
   IamPolicy:
     Type: AWS::IAM::Policy
     Properties: 
-      Groups:
-        - !Ref IamGroup
+      # Groups:
+      #   - !Ref IamGroup
+      PolicyName: !Sub EnableMFA-${AWS::StackName}
       PolicyDocument: 
         Version: "2012-10-17"
         Statement:
           - Effect: "Allow"
             Action:
               - "iam:GetAccountPasswordPolicy"
-              - "iam:GetAccountSummary"
               - "iam:ListVirtualMFADevices"
             Resource: "*"
           - Effect: "Allow"
@@ -40,55 +40,67 @@ Resources:
             Resource: "arn:aws:iam::*:user/${aws:username}"
           - Effect: "Allow"
             Action:  
-              - "iam:CreateAccessKey"
-              - "iam:ListAccessKeys"
-              - "iam:UpdateAccessKey"
-              - "iam:DeleteAccessKey"
-              - "iam:GetAccessKeyLastUsed"
+              - "iam:*AccessKey*"
+              - "iam:GetUser"              
             Resource: "arn:aws:iam::*:user/${aws:username}"
           - Effect: "Allow"
             Action:
-              - "iam:UploadSSHPublicKey"
-              - "iam:GetSSHPublicKey"
-              - "iam:ListSSHPublicKeys"
-              - "iam:DeleteSSHPublicKey"
-              - "iam:UpdateSSHPublicKey"
+              - "iam:*SSHPublicKey*"
+              - "iam:GetUser"             
             Resource: "arn:aws:iam::*:user/${aws:username}"
           - Effect: "Allow"
             Action:
-              - "iam:CreateVirtualMFADevice"
-              - "iam:EnableMFADevice"
-              - "iam:DeleteVirtualMFADevice"
-              - "iam:ListMFADevices"
-              - "iam:ListVirtualMFADevice"
-              - "iam:ResyncMFADevices"
-              - "iam:DeactivateMFADevice"
-              - "iam:GetUser"
+              - "iam:*MFADevice*"              
+              - "iam:*VirtualMFADevice*"
             Resource: 
               - "arn:aws:iam::*:user/${aws:username}"
               - "arn:aws:iam::*:mfa/${aws:username}"
-          - Effect: "Deny"
+          - Effect: "Allow"
             Action:
-              - "ec2:*"
-              - "codecommit:*"
-              - "datapipeline:*"
-              - "dynamodb:*"
-              - "s3:*"
-              - "rds:*"
-            Resource: "*"  
-      PolicyName: !Ref PName
-    DependsOn: IamGroup
-  
+              - "iam:ListMFADevices"
+            Resource: 
+              - "arn:aws:iam::*:user/${aws:username}"
+              - "arn:aws:iam::*:mfa/*"
+          - Effect: "Allow"
+            Action: 
+              - "iam:DeactivateMFADevice"
+            Resource:
+              - "arn:aws:iam::*:user/${aws:username}"
+              - "arn:aws:iam::*:mfa/${aws:username}"
+            Condition:
+              BoolIfExists:
+                "aws:MultiFactorAuthPresent": "true" 
+          - Effect: "Deny"
+            NotAction:
+              - "iam:CreateVirtualMFADevice"
+              - "iam:EnableMFADevice"
+              - "iam:ListMFADevices"
+              - "iam:ListUsers"
+              - "iam:ListVirtualMFADevices"
+              - "iam:ResyncMFADevice"
+            Resource: "*"
+            Condition:
+              BoolIfExists:
+                "aws:MultiFactorAuthPresent": "false"
+      Groups:
+        - !If [CreateGroup, !Ref IamGroup, !Ref GName] 
         
-Outputs:
-  IamP:
-    Description: Name Policy
-    Value: !Ref IamPolicy
-    Export:
-      Name: iam-policy
-  IamG:
-    Description: Name Group
-    Value: !Ref IamGroup
-    Export:
-      Name: iam-group
+# Outputs:
+#   IamP:
+#     Description: Name Policy
+#     Value: !Ref IamPolicy
+#     Export:
+#       Name: iam-policy
+  # IamG:
+  #   Description: Name Group
+  #   Value: !Ref IamGroup
+  #   Export:
+  #     Name: iam-group
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: User Group Parameters
+        Parameters:
+          - Gname
         
