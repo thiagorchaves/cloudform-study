@@ -1,0 +1,353 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  Platform:
+    Type: String
+    Default: "app"
+  Product:
+    Type: String
+    Default: "wp"
+  Customer:
+    Type: String
+    Default: "eiplus"
+  TransitionToIA:
+    Type: String
+    Default: AFTER_90_DAYS
+    AllowedValues:
+    - AFTER_7_DAYS
+    - AFTER_14_DAYS
+    - AFTER_30_DAYS
+    - AFTER_60_DAYS
+    - AFTER_90_DAYS
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet::Id
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet::Id
+
+  CloudWatchRetentionInDays:
+    Type: Number
+    Default: 365
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]
+  PreferredBackupWindow:
+    Type: String
+    Default: 09:54-10:24
+    Description: The daily time range (in UTC) during which you want to create automated backups.
+  PreferredMaintenanceWindow:
+    Type: String
+    Default: sat:07:00-sat:07:30
+    Description: The weekly time range (in UTC) during which system maintenance can occur.
+  MasterUserPassword:
+    Type: String
+    Default: ""
+    NoEcho: true
+  DBSnapshotIdentifier:
+    Type: String
+    Default: ""
+    Description: Optional. DB Snapshot ID to restore database. Leave this blank if you are not restoring from a snapshot.
+  AllocatedStorage:
+    Type: String
+    Default: ""
+
+
+Resources:
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    # DeletionPolicy: Retain
+    Properties:
+      GroupDescription: !Ref AWS::StackName
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 2049
+          IpProtocol: tcp
+          ToPort: 2049
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: sg-00bd035ee63f88a45
+      VpcId: !Ref VpcId
+
+  EFSWordpressFs:
+    DependsOn:
+      - SecurityGroup
+    Type: AWS::EFS::FileSystem
+    # DeletionPolicy: Retain
+    Properties:
+      Encrypted: False
+      LifecyclePolicies:
+        - TransitionToIA: !Ref TransitionToIA
+      PerformanceMode: generalPurpose # generalPurpose | maxIO
+      ThroughputMode: bursting # bursting | provisioned
+
+  EFSWordpressMt:
+    DependsOn:
+      - SecurityGroup
+    Type: AWS::EFS::MountTarget
+    # DeletionPolicy: Retain
+    Properties:
+      FileSystemId: !Ref EFSWordpressFs
+      SecurityGroups:
+        - !GetAtt SecurityGroup.GroupId
+      SubnetId: !Ref SubnetId
+
+  SecurityGroupALB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Customer}-${Product}-${Platform}-SecurityGroup-ALB
+      GroupDescription: !Sub ${Customer}-${Product}-${Platform}-SecurityGroup-ALB
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIpv6: ::/0
+      VpcId: !Ref VpcId
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      LoadBalancerAttributes:
+        - Key: deletion_protection.enabled
+          Value: false
+        - Key: routing.http2.enabled
+          Value: true
+      Name: !Sub ${Customer}-${Product}-${Platform}-LB
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref SecurityGroupALB
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Type: application
+
+  Listener80:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  TargetGroup:
+    DependsOn:
+      - LoadBalancer
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: "/"
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Matcher:
+        HttpCode: 200-302
+      Port: 80
+      Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 300
+        - Key: load_balancing.algorithm.type
+          Value: least_outstanding_requests
+        - Key: stickiness.enabled
+          Value: false
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: 86400
+      TargetType: ip
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VpcId
+
+
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    # DeletionPolicy: Retain
+    Properties:
+      ClusterName: !Sub ${Customer}-${Product}-${Platform}
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2008-10-17"
+        Statement:
+          - Sid: ""
+            Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Path: /
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub ${Customer}/${Product}/${Platform}
+      RetentionInDays: !Ref CloudWatchRetentionInDays
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2008-10-17"
+        Statement:
+          - Sid: ""
+            Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+      Policies:
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogStream
+                    - logs:DescribeLogStreams
+                    - logs:PutLogEvents
+                  Resource: !GetAtt LogGroup.Arn
+
+  SecurityGroupApp:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Customer}-${Product}-${Platform}-SecurityGroup-App
+      GroupDescription: !Sub ${Customer}-${Product}-${Platform}-SecurityGroup-App
+      VpcId: !Ref Vpcid
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref SecurityGroup
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref SecurityGroupALB
+      VpcId: !Ref VpcId
+
+  TaskDefinitionApp:
+    DependsOn:
+      - DBInstance
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Name: app
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:latest
+          Essential: True
+          Privileged: False
+          PortMappings:
+            - ContainerPort: 80
+              Protocol: tcp
+          MountPoints:
+            - ContainerPath: /var/www/html
+              SourceVolume: word_efs
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LogGroup
+              awslogs-stream-prefix: App
+          Environment:
+            - Name: WORDPRESS_DB_HOST
+              Value: !GetAtt DBInstance.Endpoint.Address
+            - Name: WORDPRESS_DB_USER
+              Value: wordpress
+            - Name: WORDPRESS_DB_PASSWORD
+              Value: !Ref MasterUserPassword
+            - Name: WORDPRESS_DB_NAME
+              Value: worddb
+      Cpu: 1024
+      ExecutionRoleArn: !Ref ExecutionRole
+      Family: !Sub ${AWS::StackName}-TaskDefinitionApp
+      Memory: 4096
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      TaskRoleArn: !Ref TaskRole
+      Volumes:
+        - EFSVolumeConfiguration:
+            FilesystemId: !Ref EFSWordpressFs
+            RootDirectory: /
+          Name: word_efs
+
+  ServiceApp:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DeploymentController:
+        Type: ECS
+      DesiredCount: 1
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: app
+          ContainerPort: 80
+          TargetGroupArn: !Ref TargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+          SecurityGroups:
+            - !Ref SecurityGroupApp
+      PlatformVersion: 1.4.0  # LATEST
+      SchedulingStrategy: REPLICA
+      TaskDefinition: !Ref TaskDefinitionApp
+
+  SecurityGroupDB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub MySQL Security Group for Cloudformation Stack - ${AWS::StackName}
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref SecurityGroupApp
+      VpcId: !Ref VpcId
+
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: worddb
+      DBSubnetGroupName: default-vpc-eb26328c
+      DeletionProtection: false
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: true
+      CACertificateIdentifier: rds-ca-2019
+      CopyTagsToSnapshot: true
+      DBInstanceClass: db.t3.medium
+      DBInstanceIdentifier: Wordpress-DB
+      DBParameterGroupName: default.mysql5.7
+      DeleteAutomatedBackups: true
+      EnablePerformanceInsights: false
+      AllocatedStorage: !Ref AllocatedStorage
+      Engine: mysql
+      EngineVersion: 5.7.17
+      Port: 3306
+      PreferredBackupWindow: !Ref PreferredBackupWindow
+      PreferredMaintenanceWindow: !Ref PreferredMaintenanceWindow
+      DBSnapshotIdentifier: !Ref DBSnapshotIdentifier
+      MasterUsername: wordpress
+      MasterUserPassword: !Ref MasterUserPassword
+      PubliclyAccessible: True
+      VPCSecurityGroups:
+        - !Ref SecurityGroupDB

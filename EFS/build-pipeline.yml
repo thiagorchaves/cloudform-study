@@ -1,0 +1,218 @@
+CodeBuildRole:
+  Type: AWS::IAM::Role
+  DeletionPolicy: Retain
+  Properties:
+    AssumeRolePolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Principal:
+            Service: codebuild.amazonaws.com
+    Path: /
+    Policies:
+      - PolicyName: ArtifactStoreBucket
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Resource:
+                -arn:aws:s3:::turner-locust-application.artifact-store.us-east-1/*
+              Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:GetObjectVersion
+                - s3:GetBucketAcl
+                - s3:GetBucketLocation
+      - PolicyName: CodeCommit
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Resource: arn:aws:codecommit:us-east-1:240639734538:turner-locust-application
+              Effect: Allow
+              Action:
+                - codecommit:GitPull
+      - PolicyName: Codebuild
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Resource: !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/${AWS::StackName}-*
+              Effect: Allow
+              Action:
+                - codebuild:BatchPutTestCases
+                - codebuild:CreateReport
+                - codebuild:CreateReportGroup
+                - codebuild:UpdateReport
+      - PolicyName: ECR
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Resource: "*"
+              Action:
+                - ecr:GetAuthorizationToken
+            - Resource: !ImportValue turner-locust-repositories-ECRArn
+              Effect: Allow
+              Action:
+                - ecr:BatchCheckLayerAvailability
+                - ecr:BatchGetImage
+                - ecr:CompleteLayerUpload
+                - ecr:GetDownloadUrlForLayer
+                - ecr:InitiateLayerUpload
+                - ecr:PutImage
+                - ecr:UploadLayerPart
+      - PolicyName: Logs
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Resource:
+                - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-json-builds
+                - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-json-builds:*
+              Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+
+CodeBuildImage:
+  Type: AWS::CodeBuild::Project
+  Properties:
+    Artifacts:
+      OverrideArtifactName: true
+      Type: CODEPIPELINE
+    Cache:
+      Type: S3
+      Location: eiplus-locust-codecommit-web.artifact-store.us-east-1/cache/eiplus-locust-codecommit-web
+    Environment:
+      ComputeType: BUILD_GENERAL1_SMALL
+      EnvironmentVariables:
+        - Name: REPOSITORY_NAME
+          Value: !Ref ECRRepository
+      Image: aws/codebuild/standard:3.0
+      ImagePullCredentialsType: CODEBUILD
+      PrivilegedMode: true
+      Type: LINUX_CONTAINER
+    Name: !Sub ${AWS::StackName}-json-builds
+    QueuedTimeoutInMinutes: 120
+    ServiceRole: !Ref CodeBuildRole
+    Source:
+      BuildSpec: |
+        version: 0.2
+        phases:
+          post_build:
+            commands:
+              - echo Writing image definitions file...
+              - printf '[{"name":"app","imageUri":"240639734538.dkr.ecr.us-east-1.amazonaws.com/turner/locust-application:master"}]' > imagedefinitions.json
+              - printf '[{"name":"Worker","imageUri":"240639734538.dkr.ecr.us-east-1.amazonaws.com/turner/locust-application:master"}]' > workerdefinition.json
+        artifacts:
+            files:
+              - imagedefinitions.json
+              - workerdefinition.json
+      Type: CODEPIPELINE
+    TimeoutInMinutes: 15
+
+CloudWatchEventRole:
+  Type: AWS::IAM::Role
+  DeletionPolicy: Retain
+  Properties:
+    AssumeRolePolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Principal:
+            Service:
+              - events.amazonaws.com
+    Path: /
+    Policies:
+      - PolicyName: cwe-pipeline-execution
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action: codepipeline:StartPipelineExecution
+              Resource: !Join [ '', [ 'arn:aws:codepipeline:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':', !Ref CodePipeline ] ]
+
+ECREventRule:
+  Type: AWS::Events::Rule
+  DeletionPolicy: Retain
+  Properties:
+    EventPattern:
+      source: [aws.ecr]
+      detail-type: [ECR Image Action]
+      detail:
+        action-type: [PUSH]
+        image-tag: [master]
+        repository-name: [!Ref ECRRepository]
+        result: [SUCCESS]
+    Targets:
+      - Arn: !Join [ '', [ 'arn:aws:codepipeline:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':', !Ref CodePipeline ] ]
+        RoleArn: !GetAtt CloudWatchEventRole.Arn
+        Id: codepipeline-CodePipeline
+
+
+CodePipeline:
+  Type: AWS::CodePipeline::Pipeline
+  Properties:
+    Name: !Sub ${Customer}-${Product}-${Platform}
+    RoleArn: arn:aws:iam::240639734538:role/service-role/AWSCodePipelineServiceRole-us-east-1-turner-locust
+    ArtifactStore:
+      Type: S3
+      Location: !ImportValue turner-locust-repositories-bucket
+    Stages:
+      - Name: Source
+        Actions:
+          - Name: Docker-Image
+            ActionTypeId:
+              Category: Source
+              Owner: AWS
+              Provider: ECR
+              Version: '1'
+            Configuration:
+              ImageTag: master
+              RepositoryName: !Ref ECRRepository
+            OutputArtifacts:
+              - Name: SourceArtifact
+            Namespace: SourceVariables
+      - Name: Build
+        Actions:
+          - Name: Buildjson
+            InputArtifacts:
+              - Name: SourceArtifact
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Provider: CodeBuild
+              Version: '1'
+            Configuration:
+              ProjectName: !Sub ${AWS::StackName}-json-builds
+            OutputArtifacts:
+              - Name: imagedefjson
+      - Name: Deploy
+        Actions:
+          - Name: Application
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Provider: ECS
+              Version: '1'
+            Configuration:
+              ClusterName: !Ref Cluster
+              ServiceName: !GetAtt ServiceApp.Name
+              FileName: imagedefinitions.json
+            InputArtifacts:
+              - Name: imagedefjson
+            RunOrder: 1
+          - Name: Worker
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Provider: ECS
+              Version: '1'
+            Configuration:
+              ClusterName: !Ref Cluster
+              ServiceName: !GetAtt ServiceWorker.Name
+              FileName: workerdefinition.json
+            InputArtifacts:
+              - Name: imagedefjson
+            RunOrder: 2
